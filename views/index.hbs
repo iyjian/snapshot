@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="在线网页快照">
+    <meta name="keywords" content="在线网页截图,在线网页快照,网页快照,网页截图">
+    <meta name="author" content="52445078@qq.com">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+      }
+
+      body .options {
+        width: 25%
+      }
+      .options > form {
+        margin-top: 30%;
+      }
+
+      .blank {
+        width: 25%;
+      }
+
+      body .main {
+        width: 50%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        padding-top: 200px;
+      }
+
+      .main > .input {
+        display: flex;
+        width: 480px;
+        height: 45px;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .input input {
+        width: 400px;
+      }
+    </style>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://pic.tltr.top/loading-bar.min.css" rel="stylesheet">
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?4e94ebe710151e22763d06866254e7d8";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+    </script>
+    <title>在线网页快照</title>
+  </head>
+  <body>
+    <div class="blank"></div>
+    {{!-- 中控 --}}
+    <div class="main">
+      <h1 style="margin-bottom: 40px;">在线网页快照</h1>
+      <p style="margin-bottom: 5px;">完美捕捉每一张网页图片</p>
+      {{!-- <p style="margin-bottom: 40px;"><a target="_blank" href="mailto:52445078@qq.com">联系管理员</a></p> --}}
+      <div class="input">
+        <input id="url" class="form-control" placeholder="输入需要快照的完整网址" value="https://"/>
+        <button id="takeScreenShot" type="button" class="btn btn-success btn-sm">获取快照</button>
+      </div>
+      <div id="errorMsg" style="width:400px;height:40px;line-height:40px;text-align:center;display:none;color:rgb(121, 8, 8);"></div>
+      <img id="snapshotImg" 
+           style="margin-top:20px;height:400px;width:400px;display:none;border: 1px solid lightgray;"/>
+      <div id="progressBar"
+           class="ldBar label-center"
+           data-preset="circle"
+           style="margin-top:100px;height:100px;width:100px;display:none;">
+      </div>
+      <button id="download" class="btn btn-primary btn-sm" style="margin-top:10px;width:100px;display:none;">下载原图</button>
+    </div>
+    {{!-- 右侧边栏的各种配置选项 --}}
+    <div class="options">
+      <form>
+        <div class="row mb-3">
+          <label for="resolution" class="col-sm-4 col-form-label">分辨率：</label>
+          <div class="col-sm-8">
+            <select id="resolution" class="form-control" size="3" aria-label="选择截图分辨率" style="width: 80%;">
+              <option selected>1920x1080</option>
+              <option>1366x768</option>
+              <option>414x896(iPhone XR)</option>
+              <option>768x1024(iPad Mini)</option>
+              <option>1536x864</option>
+              <option>1440x900</option>
+              <option>1280x720</option>
+              <option>1600x900</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <label for="scrollTimes" class="col-sm-4 col-form-label">滚动后快照：</label>
+          <div class="col-sm-8">
+            <select id="scrollTimes" class="form-control" aria-label="滚动次数" style="width: 80%;">
+              <option value="0" selected>不向下滚动</option>
+              <option value="1">向下滚动1次</option>
+              <option value="3">向下滚动3次</option>
+              <option value="5">向下滚动5次</option>
+              <option value="10">向下滚动10次</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <label for="scrollDelay" class="col-sm-4 col-form-label">滚动延迟：</label>
+          <div class="col-sm-8">
+            <select id="scrollDelay" class="form-control" aria-label="Default select example" style="width: 80%;">
+              <option value="1000" selected>每次滚动等待1秒</option>
+              <option value="3000">每次滚动等待3秒</option>
+              <option value="5000">每次滚动等待5秒</option>
+              <option value="10000">每次滚动等待10秒</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+  </body>
+  <script type="text/javascript" src="https://pic.tltr.top/loading-bar.min.js"></script>
+  <script>
+    let currentScreenshotId = ''
+    const snapshotImg = document.querySelector('#snapshotImg');
+    const downloadBtn = document.querySelector('#download');
+    const takeScreenShotBtn = document.querySelector('#takeScreenShot');
+    const progressBar = document.querySelector('#progressBar');
+    const errorMsgBox = document.querySelector('#errorMsg');
+    
+    function postData(url = '', data = {}) {
+      return fetch(url, {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        body: JSON.stringify(data)
+      });
+    };
+
+    function showError(errorMsg) {
+      errorMsgBox.style.display = 'block';
+      errorMsgBox.textContent = errorMsg;
+    }
+
+    downloadBtn.addEventListener('click', function () {
+      fetch('/snapshot/' + currentScreenshotId).then(function (response) {
+        response.json().then(function (data) {
+          window.location.href = data.url
+        })
+      })
+    });
+
+    takeScreenShotBtn.addEventListener('click', function () {
+      snapshotImg.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      takeScreenShotBtn.disabled = true;
+      downloadBtn['data-bs-toggle'] = 'button';
+      errorMsg.style.display = 'none';
+      const resolution = document.querySelector('#resolution').value;
+      const scrollTimes = document.querySelector('#scrollTimes').value;
+      const scrollDelay = document.querySelector('#scrollDelay').value;
+      const totalTime = parseInt(scrollTimes) * parseInt(scrollDelay) + 5000;
+      const tick = 100 / (totalTime / 10)
+      const url = document.querySelector('#url').value;
+
+      const bar = new ldBar("#progressBar");
+      bar.set(0);
+      progressBar.style.display = 'block';
+      const progressTimer = setInterval(function () {
+        const currentValue = bar.value;
+        if (currentValue < 99) {
+          if (currentValue + tick < 99) {
+            bar.set(currentValue + tick);
+          } else {
+            bar.set(99);
+            clearInterval(progressTimer);
+          }
+        }
+      }, 10);
+
+      postData('/snapshot', {
+        'url': url,
+        'resolution': resolution, 
+        'scrollTimes': scrollTimes, 
+        'scrollDelay': scrollDelay
+      }).then(response => {
+        response.json().then(data => {
+          if (!data.statusCode) {
+            const img = new Image();
+            img.onload = function() {
+              progressBar.style.display = 'none';
+              snapshotImg.style.width = this.width.toString() + 'px'
+              snapshotImg.src = data.picUrl;
+              snapshotImg.style.display = 'block';
+              downloadBtn.style.display = 'block';
+              takeScreenShotBtn.disabled = false;
+            }
+            img.src = data.picUrl;
+            snapshotImg.src = data.picUrl;
+            currentScreenshotId = data.screenshotId
+          } else {
+            if (progressTimer) {
+              clearInterval(progressTimer);
+            }
+            showError(data.message);
+            takeScreenShotBtn.disabled = false;
+            progressBar.style.display = 'none';
+          }
+        }).catch(function (error) {
+          showError('系统错误');
+          takeScreenShotBtn.disabled = false;
+          progressBar.style.display = 'none';
+        })
+      }).catch(function (error) {
+        showError('系统错误');
+        takeScreenShotBtn.disabled = false;
+        progressBar.style.display = 'none';
+      });
+    });
+  </script>
+</html>
